@@ -50,6 +50,7 @@ body{margin:0}
 [hidden]{display:none!important}
 </style>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://sad.adsgram.ai/js/sad.min.js"></script>
 <script>
 try{const tw=window.Telegram&&Telegram.WebApp;if(tw){tw.ready();tw.expand();tw.disableVerticalSwipes&&tw.disableVerticalSwipes();tw.setHeaderColor&&tw.setHeaderColor('#8fd3f4');}}catch(e){}
 </script>
@@ -92,7 +93,7 @@ try{const tw=window.Telegram&&Telegram.WebApp;if(tw){tw.ready();tw.expand();tw.d
       <p id="endText">Qal'a yiqildi.</p>
       <div class="stats"><span class="chip">🪙 +<b id="endCoins">0</b></span></div>
       <button class="gold" id="btnDouble">x2 tanga — reklama ko'rish</button>
-      <span class="small">Haqiqiy o'yinda bu yerda mukofotli reklama chiqadi (demo).</span>
+      <span class="small" id="adNote">Qisqa reklamani oxirigacha ko'ring va tangangiz ikki barobar bo'ladi.</span>
       <button id="btnNext">Keyingi level</button>
       <button class="ghost" id="btnMenu">Menyu</button>
     </div>
@@ -495,11 +496,23 @@ $('btnPlay').onclick=start;
 $('btnNext').onclick=start;
 $('btnMenu').onclick=menu;
 $('btnUpgrade').onclick=()=>{if(save.coins>=upCost()){save.coins-=upCost();save.rate++;persist();menu();}};
+// ---------- rewarded ads (Adsgram in Telegram; demo countdown elsewhere) ----------
+const ADS_BLOCK_ID='57199';
+let adController=null;
+try{if(window.Adsgram)adController=window.Adsgram.init({blockId:ADS_BLOCK_ID});}catch(e){adController=null;}
+function grantDouble(){const b=$('btnDouble');save.coins+=G.earned;persist();$('endCoins').textContent=G.earned*2;b.textContent="Tanga ikki barobar bo'ldi";hud();sfx.win();}
 $('btnDouble').onclick=()=>{
-  if(doubled)return;doubled=true;const b=$('btnDouble');b.disabled=true;
-  let s=3;b.textContent=`Reklama... ${s}`;
-  const iv=setInterval(()=>{s--;if(s>0){b.textContent=`Reklama... ${s}`;return;}
-    clearInterval(iv);save.coins+=G.earned;persist();$('endCoins').textContent=G.earned*2;b.textContent="Tanga ikki barobar bo'ldi";hud();sfx.win();},1000);
+  if(doubled)return;const b=$('btnDouble');b.disabled=true;
+  if(adController){
+    b.textContent='Reklama yuklanmoqda...';
+    adController.show().then(r=>{
+      if(r&&r.done){doubled=true;grantDouble();}
+      else{b.disabled=false;b.textContent="x2 tanga — reklama ko'rish";$('adNote').textContent="Tanga olish uchun reklamani oxirigacha ko'ring.";}
+    }).catch(()=>{b.disabled=false;b.textContent="x2 tanga — reklama ko'rish";$('adNote').textContent="Hozircha reklama yo'q. Birozdan keyin yana urinib ko'ring.";});
+    return;
+  }
+  doubled=true;let s=3;b.textContent=`Reklama... ${s}`;
+  const iv=setInterval(()=>{s--;if(s>0){b.textContent=`Reklama... ${s}`;return;}clearInterval(iv);grantDouble();},1000);
 };
 newGame();menu();requestAnimationFrame(loop);
 })();
